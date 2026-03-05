@@ -24,7 +24,3 @@ This repo contains the frontend (Next.js) UI: login page, student dashboard, cou
   - Chat UI (messages)
   - Auto-read answer toggle (browser TTS)
 - Admin pages scaffold (courses/uploads/users)
-
----
-
-## Project Structure
