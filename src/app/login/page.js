@@ -2,13 +2,13 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ROLES, signIn } from "@/lib/auth";
+import { login } from "@/lib/authClient";
 import { GraduationCap, UserCog, ShieldCheck } from "lucide-react";
 
-const ROLE_TABS = [
-  { role: ROLES.STUDENT, label: "Student", icon: GraduationCap },
-  { role: ROLES.TEACHER, label: "Teacher", icon: UserCog },
-  { role: ROLES.ADMIN, label: "Admin", icon: ShieldCheck },
+const TABS = [
+  { key: "student", label: "Student", icon: GraduationCap, demo: "student@canstemeducation.com" },
+  { key: "teacher", label: "Teacher", icon: UserCog, demo: "teacher@canstemeducation.com" },
+  { key: "admin", label: "Admin", icon: ShieldCheck, demo: "admin@canstemeducation.com" },
 ];
 
 function LoginInner() {
@@ -16,42 +16,40 @@ function LoginInner() {
   const search = useSearchParams();
   const next = search.get("next") || "";
 
-  const [role, setRole] = useState(ROLES.STUDENT);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [tab, setTab] = useState("student");
+  const [email, setEmail] = useState("student@canstemeducation.com");
+  const [password, setPassword] = useState("CanSTEM@123");
   const [error, setError] = useState("");
 
-  const demo = useMemo(() => {
-    if (role === ROLES.TEACHER) return { email: "teacher@canstemeducation.com", pass: "CanSTEM@123" };
-    if (role === ROLES.ADMIN) return { email: "admin@canstemeducation.com", pass: "CanSTEM@123" };
-    return { email: "student@canstemeducation.com", pass: "CanSTEM@123" };
-  }, [role]);
+  const demoEmail = useMemo(() => TABS.find((t) => t.key === tab)?.demo, [tab]);
 
-  // ✅ Auto-fill demo creds whenever role changes
   useEffect(() => {
-    setEmail(demo.email);
-    setPassword(demo.pass);
+    setEmail(demoEmail || "");
+    setPassword("CanSTEM@123");
     setError("");
-  }, [demo.email, demo.pass]);
+  }, [demoEmail]);
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const res = signIn({ role, email, password });
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
+    try {
+      const res = await login(email, password); // { ok, user }
+      const role = res?.user?.role;
 
-    if (next) {
-      router.replace(next);
-      return;
-    }
+      // Optional: if user picked wrong tab, still allow login but tell them
+      if (role && role !== tab) {
+        // just route based on actual role
+      }
 
-    if (role === ROLES.ADMIN) router.replace("/admin");
-    else if (role === ROLES.TEACHER) router.replace("/teacher");
-    else router.replace("/dashboard");
+      if (next) return router.replace(next);
+
+      if (role === "admin") return router.replace("/admin");
+      if (role === "teacher") return router.replace("/teacher");
+      return router.replace("/student/dashboard");
+    } catch (err) {
+      setError(err.message || "Login failed");
+    }
   };
 
   return (
@@ -59,21 +57,18 @@ function LoginInner() {
       <div className="w-full max-w-md rounded-2xl bg-white shadow-sm border border-slate-200 p-6">
         <div className="mb-5">
           <h1 className="text-2xl font-bold text-slate-900">CanSTEM AI Tutor</h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Voice-first tutor portal. Choose your role to login.
-          </p>
+          <p className="text-sm text-slate-600 mt-1">Login (now connected to backend).</p>
         </div>
 
-        {/* Tabs */}
         <div className="grid grid-cols-3 gap-2 mb-4">
-          {ROLE_TABS.map((t) => {
+          {TABS.map((t) => {
             const Icon = t.icon;
-            const active = role === t.role;
+            const active = tab === t.key;
             return (
               <button
-                key={t.role}
+                key={t.key}
                 type="button"
-                onClick={() => setRole(t.role)}
+                onClick={() => setTab(t.key)}
                 className={`rounded-xl border px-3 py-2 text-sm font-semibold flex items-center justify-center gap-2 transition
                 ${active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"}`}
               >
@@ -119,12 +114,8 @@ function LoginInner() {
           </button>
 
           <p className="text-xs text-slate-500 text-center">
-            Demo login for frontend testing only. Later: Google SSO (students-only by domain).
+            Demo accounts (seeded in DB). Password: <b>CanSTEM@123</b>
           </p>
-
-          <div className="text-xs text-slate-500 text-center">
-            Demo: <b>{demo.email}</b> / <b>{demo.pass}</b>
-          </div>
         </form>
       </div>
     </main>
@@ -132,7 +123,6 @@ function LoginInner() {
 }
 
 export default function LoginPage() {
-  // ✅ Suspense wrapper avoids Next warnings/issues with useSearchParams
   return (
     <Suspense fallback={<div className="min-h-screen grid place-items-center">Loading…</div>}>
       <LoginInner />
