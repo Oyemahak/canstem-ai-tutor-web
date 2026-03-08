@@ -1,7 +1,7 @@
+// src/app/student/courses/[courseId]/tutor/page.js
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import RequireAuth from "@/components/auth/RequireAuth";
 import Topbar from "@/components/layout/Topbar";
@@ -24,9 +24,17 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
+function SourcePill({ children }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-white border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+      {children}
+    </span>
+  );
+}
+
 export default function TutorPage() {
   const params = useParams();
-  const courseId = params?.courseId || "COURSE";
+  const courseId = (params?.courseId || "COURSE").toString().toUpperCase();
 
   const { hasSTT, hasTTS } = useMemo(isBrowserSpeechSupported, []);
 
@@ -36,11 +44,21 @@ export default function TutorPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [conversationId, setConversationId] = useState(null);
+
+  // messages: { role, text, sources? }
   const [messages, setMessages] = useState([
     { role: "assistant", text: `Welcome to ${courseId} Tutor. Tap the mic and ask your question.` },
   ]);
 
   const recognitionRef = useRef(null);
+  const scrollerRef = useRef(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, transcript]);
 
   const startListening = () => {
     if (!hasSTT) return;
@@ -99,14 +117,14 @@ export default function TutorPage() {
 
       if (!conversationId && r.conversationId) setConversationId(r.conversationId);
 
-      setMessages((prev) => [...prev, { role: "assistant", text: r.answer }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: r.answer, sources: r.sources || [] },
+      ]);
 
       if (autoRead && hasTTS) speak(r.answer);
     } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: `Error: ${e.message}` },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", text: `Error: ${e.message}` }]);
     } finally {
       setBusy(false);
     }
@@ -120,7 +138,8 @@ export default function TutorPage() {
 
   return (
     <RequireAuth allow={["student"]}>
-      <Topbar title={`${courseId} Tutor`} backHref="/student/dashboard" />
+      <Topbar title="Tutor" backHref="/student/dashboard" />
+
       <main className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-4xl p-4 sm:p-6">
           {/* Auto read toggle */}
@@ -149,18 +168,35 @@ export default function TutorPage() {
 
           {/* Chat window */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="p-4 sm:p-5 h-[60vh] overflow-y-auto">
+            <div ref={scrollerRef} className="p-4 sm:p-5 h-[60vh] overflow-y-auto">
               <div className="space-y-3">
                 {messages.map((m, idx) => (
                   <div key={idx} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                        m.role === "user"
-                          ? "bg-slate-900 text-white"
-                          : "bg-slate-100 text-slate-900"
-                      }`}
-                    >
-                      {m.text}
+                    <div className="max-w-[85%]">
+                      <div
+                        className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                          m.role === "user"
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-900"
+                        }`}
+                      >
+                        {m.text}
+                      </div>
+
+                      {/* ✅ Sources shown only for assistant messages */}
+                      {m.role === "assistant" && (m.sources || []).length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <SourcePill>Sources:</SourcePill>
+                          {m.sources.slice(0, 6).map((s, i) => (
+                            <SourcePill key={`${s.file_id || "src"}-${i}`}>
+                              {s.file_id ? `file:${String(s.file_id).slice(-8)}` : "citation"}
+                            </SourcePill>
+                          ))}
+                          {(m.sources || []).length > 6 && (
+                            <SourcePill>+{(m.sources || []).length - 6} more</SourcePill>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -211,6 +247,12 @@ export default function TutorPage() {
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Type your question (or use the mic)…"
                     className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:ring-2 focus:ring-slate-900/10"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
                   />
 
                   <button
@@ -229,8 +271,9 @@ export default function TutorPage() {
             </div>
           </div>
 
+          {/* ✅ Updated footer note */}
           <div className="mt-3 text-xs text-slate-500">
-            For now, AI answers are mock until you add OpenAI key to backend. History is already stored in DB.
+            This tutor answers from your course materials first. If something isn’t found in the materials, it may provide a general explanation and ask follow-up questions.
           </div>
         </div>
       </main>
