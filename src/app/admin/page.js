@@ -107,9 +107,8 @@ function ConfirmModal({
           <SecondaryButton onClick={onCancel}>Cancel</SecondaryButton>
           <button
             onClick={onConfirm}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
-              danger ? "bg-red-600 hover:bg-red-500" : "bg-slate-900 hover:bg-slate-800"
-            }`}
+            className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${danger ? "bg-red-600 hover:bg-red-500" : "bg-slate-900 hover:bg-slate-800"
+              }`}
           >
             {confirmText}
           </button>
@@ -180,7 +179,7 @@ export default function AdminDashboard() {
     message: "",
     confirmText: "Confirm",
     danger: false,
-    action: async () => {},
+    action: async () => { },
   });
 
   // Users search/filter/pagination
@@ -225,8 +224,8 @@ export default function AdminDashboard() {
       userStatusFilter === "active"
         ? activeUsers
         : userStatusFilter === "disabled"
-        ? disabledUsers
-        : users;
+          ? disabledUsers
+          : users;
 
     return (base || []).filter((u) => {
       if (tabRoleFilter === "student" && u.role !== "student") return false;
@@ -322,7 +321,7 @@ export default function AdminDashboard() {
       message,
       confirmText,
       danger: !!danger,
-      action: action || (async () => {}),
+      action: action || (async () => { }),
     });
   };
 
@@ -683,19 +682,22 @@ export default function AdminDashboard() {
 
   // ---------- Materials ----------
   const uploadMaterials = async (e) => {
-    const list = Array.from(e.target.files || []);
-    if (!selectedCourseId || list.length === 0) return;
+    const picked = Array.from(e.target.files || []);
+    if (!picked.length || !selectedCourseId) return;
 
-    setUploading(true);
     setErr("");
+    setUploading(true);
 
     try {
-      for (const f of list) {
-        const fd = new FormData();
-        fd.append("file", f);
-        if (normalize(topic)) fd.append("topic", normalize(topic));
-        await apiForm(`/api/files/course/${selectedCourseId}`, fd);
-      }
+      const fd = new FormData();
+
+      // ✅ backend expects field name "files"
+      picked.forEach((f) => fd.append("files", f));
+
+      if (normalize(topic)) fd.append("topic", normalize(topic));
+
+      await apiForm(`/api/files/course/${selectedCourseId}`, fd);
+
       await loadFiles(selectedCourseId);
       e.target.value = "";
       setTopic("");
@@ -733,11 +735,10 @@ export default function AdminDashboard() {
     <button
       key={key}
       onClick={() => setTab(key)}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold border ${
-        tab === key
+      className={`rounded-xl px-4 py-2 text-sm font-semibold border ${tab === key
           ? "bg-slate-900 text-white border-slate-900"
           : "bg-white border-slate-200 hover:bg-slate-50"
-      }`}
+        }`}
     >
       {label}
     </button>
