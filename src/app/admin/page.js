@@ -1349,7 +1349,7 @@ export default function AdminDashboard() {
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="Topic (optional) e.g. Unit 1 • Trigonometry"
-                    className="w-full sm:w-[340px] rounded-xl border border-slate-200 p-2.5 text-sm"
+                    className="w-full sm:w-85 rounded-xl border border-slate-200 p-2.5 text-sm"
                   />
 
                   <label className="rounded-xl bg-slate-900 text-white px-4 py-2.5 text-sm font-semibold hover:bg-slate-800 cursor-pointer text-center">

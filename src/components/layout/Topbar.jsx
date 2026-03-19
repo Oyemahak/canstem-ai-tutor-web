@@ -75,9 +75,9 @@ export default function Topbar({ title, backHref }) {
             <Image
               src="/canstem-logo.png"
               alt="CanSTEM Education"
-              width={44}
-              height={44}
-              className="h-11 w-11 rounded-xl border border-slate-200 bg-white object-contain"
+              width={80}
+              height={80}
+              className="rounded-xl border border-slate-200 bg-white object-contain"
               priority
             />
 
